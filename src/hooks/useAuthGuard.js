@@ -1,4 +1,4 @@
-import getConfig from "@/firebase/config";
+import getConfig from "@/src/firebase/config";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { useRouter } from "next/navigation";

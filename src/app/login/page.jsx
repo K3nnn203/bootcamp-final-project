@@ -18,6 +18,8 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { Button } from "@/src/components/ui/button";
 import { Label } from "@/src/components/ui/label";
+import { toast } from "sonner";
+import { Spinner } from "@/src/components/ui/spinner";
 
 export default function Login() {
   const router = useRouter();
@@ -27,6 +29,7 @@ export default function Login() {
   });
 
   const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
     setForm({
@@ -54,17 +57,19 @@ export default function Login() {
     } else {
       setErrors([]);
       const { db, auth } = getConfig();
+      setLoading(true)
       signInWithEmailAndPassword(auth, form.email, form.password)
         .then(async (userCredential) => {
           const user = userCredential.user;
           const userData = await getDoc(doc(db, "users", user.uid));
-          window.alert(
-            `Login Successful! Welocome ${userData.data().username}`,
-          );
+          toast.success("Login successful.", {position: 'bottom-right'})
           router.push("/");
         })
         .catch((error) => {
           window.alert(error.message);
+        })
+        .finally(() => {
+          setLoading(false);
         });
     }
   };
@@ -118,6 +123,7 @@ export default function Login() {
               Forgot password?
             </Link>
             <Button className="mt-1.5 mb-1.5" onClick={handleLogin}>
+              {loading && <Spinner />}
               Login
             </Button>
             <p className="text-center">

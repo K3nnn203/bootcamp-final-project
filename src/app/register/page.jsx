@@ -10,6 +10,7 @@ import {
   doc,
   getDocs,
   query,
+  serverTimestamp,
   setDoc,
   where,
 } from "firebase/firestore";
@@ -27,7 +28,8 @@ import { Button } from "@/src/components/ui/button";
 import { Label } from "@/src/components/ui/label";
 import DatePicker from "@/src/components/custom/DatePicker";
 import { Spinner } from "@/src/components/ui/spinner";
-import BaseDialog from "@/src/components/custom/BaseDialog";
+import Alert from "@/src/components/custom/Alert";
+import { toast } from "sonner";
 
 export default function Register() {
   const { db } = getConfig();
@@ -40,6 +42,8 @@ export default function Register() {
     password: "",
     confirmPassword: "",
   });
+
+  // const [alertOpen, setAlertOpen] = useState(true);
 
   const [userExist, setUserExist] = useState(false);
   const [errors, setErrors] = useState({});
@@ -131,13 +135,18 @@ export default function Register() {
             username: form.username,
             dateOfBirth: form.dateOfBirth,
             email: form.email,
+            profileName: form.username,
+            bio: "",
+            profilePic: "",
+            createdAt: serverTimestamp(),
             role: "user",
           });
-          window.alert("Registration Successful");
-          router.push("/login");
+          toast.success('Account successfully registered.', {position: 'bottom-right'})
+          router.push("/");
+          // setAlertOpen(true)
         })
         .catch((error) => {
-          window.alert(error.message);
+          toast.error(error.message)
         })
         .finally(() => {
           setLoading(false)
@@ -267,7 +276,6 @@ export default function Register() {
               </Link>
             </p>
           </div>
-          <BaseDialog />
         </CardFooter>
       </Card>
     </div>
