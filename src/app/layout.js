@@ -28,7 +28,9 @@ export default function RootLayout({ children }) {
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
           <Navigation />
-          {children}
+          <div className="w-150 min-h-[calc(100vh-60px)] mr-auto ml-auto border-r border-l p-5">
+            {children}
+          </div>
           <Toaster />
         </ThemeProvider>
       </body>

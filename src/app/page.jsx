@@ -1,7 +1,8 @@
 'use client'
 
-import Post from "../components/custom/Post";
-import { useAuthGuard } from "../hooks/useAuthGuard";
+import Post from "@/src/components/custom/Post";
+import UploadPost from "@/src/components/custom/UploadPost";
+import { useAuthGuard } from "@/src/hooks/useAuthGuard";
 
 export default function Home() {
   const { loading } = useAuthGuard();
@@ -12,8 +13,10 @@ export default function Home() {
     return <div>loading ...</div>
 
   return (
-    <div className="flex flex-col flex-1 items-center justify-center">
+    <>
+      <UploadPost />
       <Post />
-    </div>
+
+    </>
   );
 }

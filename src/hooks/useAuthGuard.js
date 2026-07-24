@@ -21,7 +21,7 @@ export function useAuthGuard() {
 
                 if(docSnapshot.exists()) {
                     const userData = docSnapshot.data();
-                    setUser(userData)
+                    setUser({userId: uid, ...userData})
                     setRole(userData.role);
                     setIsAuthenticated(true);
                 } else {

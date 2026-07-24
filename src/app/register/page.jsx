@@ -135,6 +135,8 @@ export default function Register() {
             username: form.username,
             dateOfBirth: form.dateOfBirth,
             email: form.email,
+            followerCount: 0,
+            followingCount: 0,
             profileName: form.username,
             bio: "",
             profilePic: "",

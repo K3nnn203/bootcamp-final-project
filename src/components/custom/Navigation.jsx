@@ -21,7 +21,7 @@ export default function Navigation() {
 
   const { theme, toggle } = useTheme();  
   const { auth } = getConfig();
-  const { isAuthenticated } = useAuthGuard();
+  const { isAuthenticated, user } = useAuthGuard();
 
   const [loadingLogout, setLoadingLogout] = useState(false)
   const handleLogout = async () => {
@@ -36,10 +36,10 @@ export default function Navigation() {
   };
 
   return (
-    <div className="w-full flex items-center">
+    <div className="grid grid-cols-3">
       {isAuthenticated && (
         <>
-          <NavigationMenu className="p-1 ml-auto mr-auto">
+          <NavigationMenu className="p-1 ml-auto mr-auto col-start-2">
             <NavigationMenuList>
               <NavigationMenuItem>
                 <NavigationMenuLink href="/" className="text-xl">
@@ -62,13 +62,17 @@ export default function Navigation() {
                 </NavigationMenuLink>
               </NavigationMenuItem>
               <NavigationMenuItem>
-                <NavigationMenuLink href="/profile" className="text-xl">
+                <NavigationMenuLink href={`/${user.username}`} className="text-xl">
                   Profile
                 </NavigationMenuLink>
               </NavigationMenuItem>
             </NavigationMenuList>
           </NavigationMenu>
-          <div className="flex gap-2 ml-2 mr-2">
+        </>
+      )}
+      {
+        isAuthenticated && (
+          <div className="flex gap-2 items-center ml-auto mr-2">
             <Button onClick={toggle}>Switch to {theme === 'light' ? 'dark' : 'light'} theme</Button>
             <Alert
                 trigger={
@@ -84,8 +88,8 @@ export default function Navigation() {
                 loading={loadingLogout}
             />
           </div>
-        </>
-      )}
+        )
+      }
     </div>
   );
 }
