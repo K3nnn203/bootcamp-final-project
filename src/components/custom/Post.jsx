@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -14,34 +13,29 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/src/components/ui/avatar";
-import { Bookmark, Heart, MessageCircle } from "lucide-react";
-import Image from "next/image";
+import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import { useRouter } from "next/navigation";
+import React, { useEffect, useState } from "react";
 import {
-  addDoc,
-  collection,
   deleteDoc,
   doc,
-  getDocs,
+  getDoc,
   increment,
   onSnapshot,
-  orderBy,
-  query,
+  setDoc,
   updateDoc,
-  where,
 } from "firebase/firestore";
+import { Heart, MessageCircle, Bookmark } from "lucide-react";
 import getConfig from "@/src/firebase/config";
-import { useParams, useRouter } from "next/navigation";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
 
-export default function Post({ filter }) {
+export default function Post(props) {
+  const { post } = props;
+
   const router = useRouter();
-  const { postId } = useParams();
   const { db } = getConfig();
   const { user } = useAuthGuard();
 
-  const [allPost, setAllPost] = useState([]);
-
-  const [likedPosts, setLikedPosts] = useState(new Set());
+  const [liked, setLiked] = useState(false);
 
   const calculatePostedHours = (date) => {
     if (!date) {
@@ -69,167 +63,93 @@ export default function Post({ filter }) {
 
   const handleLikePost = async (e, postId) => {
     e.stopPropagation();
-    const q = query(
-      collection(db, "likes"),
-      where("postId", "==", postId),
-      where("userId", "==", user?.userId),
-    );
+    const likeRef = doc(db, "likes", `${postId}_${user.userId}`);
 
-    const snapshot = await getDocs(q);
+    const likeSnap = await getDoc(likeRef);
 
-    if (snapshot.empty) {
-      // Like
-      await addDoc(collection(db, "likes"), {
-        postId: postId,
-        userId: user?.userId,
-      });
-
-      await updateDoc(doc(db, "posts", postId), {
-        likeCount: increment(1),
-      });
-    } else {
-      // Unlike
-      const likeDoc = snapshot.docs[0];
-
-      await deleteDoc(likeDoc.ref);
-
+    if (likeSnap.exists()) {
+      await deleteDoc(likeRef);
       await updateDoc(doc(db, "posts", postId), {
         likeCount: increment(-1),
+      });
+    } else {
+      await setDoc(likeRef, {
+        postId,
+        userId: user.userId,
+      });
+      await updateDoc(doc(db, "posts", postId), {
+        likeCount: increment(1),
       });
     }
   };
 
   useEffect(() => {
-    let q;
-    if (!user) return;
-    switch (filter) {
-      case "my-posts":
-        q = query(
-          collection(db, "posts"),
-          where("userId", "==", user?.userId),
-          where("replyToPostId", "==", ""),
-          orderBy("createdAt", "desc"),
-        );
-        break;
-
-      case "all-replies":
-        q = query(
-          collection(db, "posts"),
-          where("replyToPostId", "==", postId),
-          orderBy("createdAt", "desc"),
-        );
-        break;
-
-      case "my-replies":
-        q = query(
-          collection(db, "posts"),
-          where("userId", "==", user?.userId),
-          where("replyToPostId", "!=", ""),
-          orderBy("createdAt", "desc"),
-        );
-        break;
-
-      case "liked-posts":
-        // Different query
-        break;
-
-      default:
-        q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
-        break;
-    }
-    const unsub = onSnapshot(q, (snapshot) => {
-      const posts = [];
-      snapshot.forEach((post) => {
-        posts.push({ postId: post.id, ...post.data() });
-      });
-      setAllPost(posts);
-    });
-    return () => unsub();
-  }, [db, postId, user]);
-
-  useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, "likes"),
-      where("userId", "==", user.userId),
-    );
+    const likeRef = doc(db, "likes", `${post?.postId}_${user.userId}`);
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const liked = new Set(snapshot.docs.map((doc) => doc.data().postId));
-
-      setLikedPosts(liked);
+    const unsub = onSnapshot(likeRef, (doc) => {
+      const liked = doc.data()
+      if(liked) {
+        setLiked(true);
+      } else {
+        setLiked(false)
+      }
     });
 
     return unsub;
   }, [user]);
 
   return (
-    <>
-      <div className="flex flex-col pt-5 pb-5 gap-10">
-        {allPost.map((post) => {
-          return (
-            <Card
-              className="w-full"
-              key={post.postId}
-              onClick={() => handleClickPost(post?.username, post?.postId)}
-            >
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage
-                      src="https://github.com/shadcn.png"
-                      alt="@shadcn"
-                    />
-                    <AvatarFallback>CN</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle>{post?.profileName}</CardTitle>
-                    <CardDescription>
-                      @{post?.username} ·{" "}
-                      {calculatePostedHours(post?.createdAt)}
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p>{post?.content}</p>
-              </CardContent>
-              <CardFooter className="flex gap-10">
-                <div className="flex gap-2 items-center">
-                  <Heart
-                    onClick={(e) => handleLikePost(e, post?.postId)}
-                    fill={likedPosts.has(post.postId) ? "currentColor" : "none"}
-                    className={
-                      likedPosts.has(post.postId)
-                        ? "text-red-500"
-                        : "hover:text-red-500"
-                    }
-                    size={18}
-                    strokeWidth={1}
-                  />
-                  <p>{post?.likeCount}</p>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <MessageCircle
-                    className="hover:text-blue-500"
-                    size={18}
-                    strokeWidth={1}
-                  />
-                  <p>{post?.replyCount}</p>
-                </div>
-                <div className="flex gap-2 items-center">
-                  <Bookmark
-                    className="hover:text-green-500"
-                    size={18}
-                    strokeWidth={1}
-                  />
-                </div>
-              </CardFooter>
-            </Card>
-          );
-        })}
-      </div>
-    </>
+    <Card
+      className="w-full"
+      key={post?.postId}
+      onClick={() => handleClickPost(post?.username, post?.postId)}
+    >
+      <CardHeader>
+        <div className="flex items-center gap-3">
+          <Avatar>
+            <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+            <AvatarFallback>CN</AvatarFallback>
+          </Avatar>
+          <div>
+            <CardTitle>{post?.profileName}</CardTitle>
+            <CardDescription>
+              @{post?.username} · {calculatePostedHours(post?.createdAt)}
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p>{post?.content}</p>
+      </CardContent>
+      <CardFooter className="flex gap-10">
+        <div className="flex gap-2 items-center">
+          <Heart
+            onClick={(e) => handleLikePost(e, post?.postId)}
+            fill={liked === true ? "currentColor" : "none"}
+            className={liked === true ? "text-red-500" : "hover:text-red-500"}
+            size={18}
+            strokeWidth={1}
+          />
+          <p>{post?.likeCount}</p>
+        </div>
+        <div className="flex gap-2 items-center">
+          <MessageCircle
+            className="hover:text-blue-500"
+            size={18}
+            strokeWidth={1}
+          />
+          <p>{post?.replyCount}</p>
+        </div>
+        <div className="flex gap-2 items-center">
+          <Bookmark
+            className="hover:text-green-500"
+            size={18}
+            strokeWidth={1}
+          />
+        </div>
+      </CardFooter>
+    </Card>
   );
 }

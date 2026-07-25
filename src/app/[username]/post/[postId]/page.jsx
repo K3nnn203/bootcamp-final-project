@@ -32,8 +32,8 @@ import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Separator } from "@/src/components/ui/separator";
 import UploadPost from "@/src/components/custom/UploadPost";
-import Post from "@/src/components/custom/Post";
 import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import PostView from "@/src/components/custom/PostView";
 
 export default function PostDetails() {
   const { postId } = useParams();
@@ -160,7 +160,7 @@ export default function PostDetails() {
       <p>Posted on {post?.createdAt?.toDate().toString().slice(4, 15)}</p>
       <Separator className="mt-5 mb-5" />
       <UploadPost />
-      <Post filter='all-replies' />
+      <PostView filter='all-replies' />
     </>
   );
 }

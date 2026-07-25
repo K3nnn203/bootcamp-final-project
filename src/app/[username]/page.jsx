@@ -1,11 +1,13 @@
 "use client";
 
 import Post from "@/src/components/custom/Post";
+import PostView from "@/src/components/custom/PostView";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@/src/components/ui/avatar";
+import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
 import {
   Tabs,
@@ -16,10 +18,11 @@ import {
 import getConfig from "@/src/firebase/config";
 import { useAuthGuard } from "@/src/hooks/useAuthGuard";
 import { collection, getDoc, getDocs, query, where } from "firebase/firestore";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 export default function Profile() {
+  const router = useRouter();
   const { username } = useParams();
   const { user } = useAuthGuard();
   const { db } = getConfig();
@@ -36,9 +39,17 @@ export default function Profile() {
     return data[0];
   };
 
+  const handleEditProfile = () => {
+    router.push('/edit-profile');
+  }
+
+  const handleFollow = () => {
+
+  }
+
   useEffect(() => {
     const loadUser = async () => {
-      if (!username || !user) return
+      if (!username || !user) return;
       if (username === user?.username) {
         setUserInProfile(user);
       } else {
@@ -62,7 +73,9 @@ export default function Profile() {
             <h1 className="font-heading text-2xl font-bold">
               {userInProfile?.profileName}
             </h1>
-            <p className="text-sm text-muted-foreground">@{userInProfile?.username}</p>
+            <p className="text-sm text-muted-foreground">
+              @{userInProfile?.username}
+            </p>
           </div>
           <p className="mt-1 mb-1">
             Joined {userInProfile?.createdAt.toDate().toString().slice(4, 15)}
@@ -71,6 +84,13 @@ export default function Profile() {
             <p>{userInProfile?.followingCount} Following</p>
             <p>{userInProfile?.followerCount} Followers</p>
           </div>
+        </div>
+        <div className="mb-auto mt-5">
+          {username === user?.username ? (
+            <Button variant="outline" onClick={handleEditProfile}>Edit Profile</Button>
+          ) : (
+            <Button>Follow</Button>
+          )}
         </div>
       </div>
       <Tabs defaultValue="My Posts">
@@ -81,10 +101,10 @@ export default function Profile() {
         </TabsList>
         <Separator />
         <TabsContent value="My Posts">
-          <Post filter="my-posts" />
+          <PostView filter="my-posts" />
         </TabsContent>
         <TabsContent value="Replies">
-          <Post filter="my-replies" />
+          <PostView filter="my-replies" />
         </TabsContent>
         <TabsContent value="Liked Posts">
           {/* <Post filter="liked-posts" /> */}
