@@ -63,7 +63,7 @@ export default function Login() {
           const user = userCredential.user;
           const userData = await getDoc(doc(db, "users", user.uid));
           toast.success("Login successful.", {position: 'bottom-right'})
-          router.push("/");
+          router.replace("/");
         })
         .catch((error) => {
           window.alert(error.message);

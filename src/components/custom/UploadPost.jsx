@@ -20,7 +20,7 @@ import InputImage from "./InputImage";
 import { X } from "lucide-react";
 import { Spinner } from "../ui/spinner";
 import getConfig from "@/src/firebase/config";
-import { addDoc, collection, doc, increment, serverTimestamp, updateDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
 import { useAuthGuard } from "@/src/hooks/useAuthGuard";
 import { toast } from "sonner";
 import { useParams } from "next/navigation";
@@ -35,6 +35,53 @@ export default function UploadPost() {
   const [imagePreview, setImagePreview] = useState("");
 
   const [loading, setLoading] = useState(false);
+
+  const createPostNotifications = async (postId, content) => {
+    const followerSnap = await getDocs(
+      query(
+        collection(db, 'follows'),
+        where("followingId", "==", user.userId)
+      )
+    )
+
+    const promise = followerSnap.docs.map((doc) => 
+      addDoc(collection(db, 'notifications'), {
+        recipientId: doc.data().followerId,
+        actorId: user.userId,
+        actorUsername: user.username,
+        actorProfileName: user.profileName,
+        actorProfilePic: user.profilePic,
+        postId: postId,
+        content: content,
+        type: "new-post",
+        createdAt: serverTimestamp(),
+        isRead: false,
+      })
+    )
+
+    await Promise.all(promise)
+  }
+
+  const createReplyNotifications = async (postId, content) => {
+    const postRef = doc(db, "posts", postId)
+    const postSnap = await getDoc(postRef)
+    if(postSnap.exists()){
+      const recipientId = postSnap.data().userId
+      if(recipientId === user.userId) return
+      await addDoc(collection(db, 'notifications'), {
+        recipientId: recipientId,
+        actorId: user.userId,
+        actorUsername: user.username,
+        actorProfileName: user.profileName,
+        actorProfilePic: user.profilePic,
+        postId: postId,
+        content: content,
+        type: "reply",
+        createdAt: serverTimestamp(),
+        isRead: false,
+      })
+    }
+  }
 
   const handleUploadPost = async () => {
     setLoading(true);
@@ -56,14 +103,14 @@ export default function UploadPost() {
       }
 
       const postCollections = collection(db, "posts");
-      await addDoc(postCollections, {
+      const newPost = await addDoc(postCollections, {
         userId: user.userId,
         username: user.username, // duplicated
         profileName: user.profileName,
         userProfilePicture: user.profilePic, // duplicated
         content: content,
         imageUrl,
-        replyToPostId: postId,
+        replyToPostId: postId || '',
         likeCount: 0,
         replyCount: 0,
         createdAt: serverTimestamp(),
@@ -71,8 +118,11 @@ export default function UploadPost() {
       if(postId) {
         const updateRef = doc(db, 'posts', postId)
         await updateDoc(updateRef, {
-            replyCount: increment(1)
+          replyCount: increment(1)
         })
+        createReplyNotifications(postId, content)
+      } else {
+        createPostNotifications(newPost.id, content);
       }
 
       toast.success(postId ? "Your comment has been added" : "Upload Success!");

@@ -1,54 +1,57 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import {
   collection,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
+  startAfter,
   where,
 } from "firebase/firestore";
 import getConfig from "@/src/firebase/config";
 import { useParams } from "next/navigation";
 import { useAuthGuard } from "@/src/hooks/useAuthGuard";
 import Post from "@/src/components/custom/Post";
+import { Spinner } from "@/src/components/ui/spinner";
 
-export default function PostView({ filter }) {
-  
+export default function PostView({ filter, userInProfileId }) {
   const { postId } = useParams();
   const { db } = getConfig();
   const { user } = useAuthGuard();
 
   const [allPost, setAllPost] = useState([]);
+  const [lastDoc, setLastDoc] = useState(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let q;
-    if (!user) return;
+  const loaderRef = useRef(null);
+
+  const createQuery = (lastDoc = null ) => {
+    const constraints = [];
+
     switch (filter) {
       case "my-posts":
-        q = query(
-          collection(db, "posts"),
-          where("userId", "==", user?.userId),
-          where("replyToPostId", "==", ""),
-          orderBy("createdAt", "desc"),
-        );
+          constraints.push(
+            where("userId", "==", userInProfileId),
+            where("replyToPostId", "==", ""),
+          );
         break;
 
       case "all-replies":
-        q = query(
-          collection(db, "posts"),
+        constraints.push(
           where("replyToPostId", "==", postId),
-          orderBy("createdAt", "desc"),
         );
         break;
 
       case "my-replies":
-        q = query(
-          collection(db, "posts"),
-          where("userId", "==", user?.userId),
+        constraints.push(
+          where("userId", "==", userInProfileId),
           where("replyToPostId", "!=", ""),
-          orderBy("createdAt", "desc"),
         );
         break;
 
@@ -56,19 +59,107 @@ export default function PostView({ filter }) {
         // Different query
         break;
 
+      case "bookmarks":
+        // q =
+        break;
+
       default:
-        q = query(collection(db, "posts"), orderBy("createdAt", "desc"));
         break;
     }
-    const unsub = onSnapshot(q, (snapshot) => {
-      const posts = [];
-      snapshot.forEach((post) => {
-        posts.push({ postId: post.id, ...post.data() });
-      });
-      setAllPost(posts);
-    });
-    return () => unsub();
+
+    constraints.push(orderBy("createdAt", "desc"));
+
+    if (lastDoc) {
+      constraints.push(startAfter(lastDoc));
+    }
+
+    constraints.push(limit(5));
+
+    return query(collection(db, "posts"), ...constraints);
+  };
+
+  const loadPost = async () => {
+    if (!user) return;
+
+    const snapshot = await getDocs(createQuery());
+    const newPosts = snapshot.docs.map((doc) => ({
+      postId: doc.id,
+      ...doc.data(),
+    }));
+
+    setAllPost(newPosts);
+    setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+
+    if (snapshot.empty) {
+      setLastDoc(null);
+      setHasMore(false);
+      setInitialLoading(false);
+      return;
+    }
+    if (snapshot.docs.length < 5) setHasMore(false);
+
+    setInitialLoading(false);
+  };
+
+  const loadMore = async () => {
+    if (loading) return;
+    if (!lastDoc) return;
+
+    setLoading(true);
+    const q = createQuery()
+    const snapshot = await getDocs(createQuery(lastDoc));
+
+    const newPosts = snapshot.docs.map((doc) => ({
+      postId: doc.id,
+      ...doc.data(),
+    }));
+
+    setAllPost((prev) => [...prev, ...newPosts]);
+
+    if (snapshot.empty) {
+      setLastDoc(null);
+      setHasMore(false);
+      return;
+    }
+
+    setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
+
+    if (snapshot.docs.length < 5) setHasMore(false);
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (!user) return;
+
+    loadPost();
   }, [db, postId, user]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+
+        if (entry.isIntersecting) {
+          console.log("Enter");
+          loadMore();
+        }
+      },
+      {
+        threshold: 1.0,
+      },
+    );
+
+    if (loaderRef.current) {
+      observer.observe(loaderRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [lastDoc, loading, hasMore]);
+
+  console.log(lastDoc)
+
+  if(initialLoading) return <div className="flex justify-center"><Spinner /></div>
 
   return (
     <>
@@ -76,10 +167,15 @@ export default function PostView({ filter }) {
         {allPost.map((post) => {
           return (
             <div key={post.postId}>
-                <Post post={post} />
+              <Post post={post} />
             </div>
           );
         })}
+        {hasMore && (
+          <div ref={loaderRef} className="ml-auto mr-auto">
+            <Spinner />
+          </div>
+        )}
       </div>
     </>
   );

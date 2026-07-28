@@ -144,7 +144,7 @@ export default function Register() {
             role: "user",
           });
           toast.success('Account successfully registered.', {position: 'bottom-right'})
-          router.push("/");
+          router.replace("/");
           // setAlertOpen(true)
         })
         .catch((error) => {

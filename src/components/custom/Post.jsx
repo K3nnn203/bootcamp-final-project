@@ -22,6 +22,7 @@ import {
   getDoc,
   increment,
   onSnapshot,
+  serverTimestamp,
   setDoc,
   updateDoc,
 } from "firebase/firestore";
@@ -36,6 +37,7 @@ export default function Post(props) {
   const { user } = useAuthGuard();
 
   const [liked, setLiked] = useState(false);
+  const [bookmarked, setBookmarked] = useState(false);
 
   const calculatePostedHours = (date) => {
     if (!date) {
@@ -76,9 +78,27 @@ export default function Post(props) {
       await setDoc(likeRef, {
         postId,
         userId: user.userId,
+        createdAt: serverTimestamp()
       });
       await updateDoc(doc(db, "posts", postId), {
         likeCount: increment(1),
+      });
+    }
+  };
+
+  const handleBookmarkPost = async (e, postId) => {
+    e.stopPropagation();
+    const bookmarkRef = doc(db, "bookmarks", `${postId}_${user.userId}`);
+
+    const bookmarkSnap = await getDoc(bookmarkRef);
+
+    if (bookmarkSnap.exists()) {
+      await deleteDoc(bookmarkRef);
+    } else {
+      await setDoc(bookmarkRef, {
+        postId,
+        userId: user.userId,
+        createdAt: serverTimestamp()
       });
     }
   };
@@ -94,6 +114,23 @@ export default function Post(props) {
         setLiked(true);
       } else {
         setLiked(false)
+      }
+    });
+
+    return unsub;
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const bookmarkRef = doc(db, "bookmarks", `${post?.postId}_${user.userId}`);
+
+    const unsub = onSnapshot(bookmarkRef, (doc) => {
+      const bookmarked = doc.data()
+      if(bookmarked) {
+        setBookmarked(true);
+      } else {
+        setBookmarked(false)
       }
     });
 
@@ -136,7 +173,7 @@ export default function Post(props) {
         </div>
         <div className="flex gap-2 items-center">
           <MessageCircle
-            className="hover:text-blue-500"
+            className="hover:text-green-500"
             size={18}
             strokeWidth={1}
           />
@@ -144,7 +181,9 @@ export default function Post(props) {
         </div>
         <div className="flex gap-2 items-center">
           <Bookmark
-            className="hover:text-green-500"
+            onClick={(e) => handleBookmarkPost(e, post?.postId)}
+            fill={bookmarked === true ? "currentColor" : "none"}
+            className={bookmarked === true ? "text-blue-500" : "hover:text-blue-500"}
             size={18}
             strokeWidth={1}
           />

@@ -17,17 +17,30 @@ import {
 } from "@/src/components/ui/tabs";
 import getConfig from "@/src/firebase/config";
 import { useAuthGuard } from "@/src/hooks/useAuthGuard";
-import { collection, getDoc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  increment,
+  query,
+  setDoc,
+  updateDoc,
+  where,
+} from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 export default function Profile() {
   const router = useRouter();
   const { username } = useParams();
-  const { user } = useAuthGuard();
+  const { user, loading } = useAuthGuard();
   const { db } = getConfig();
 
   const [userInProfile, setUserInProfile] = useState();
+  const [followed, setFollowed] = useState(false);
+  const [hovered, setHovered] = useState(false);
 
   const getUser = async () => {
     const q = query(collection(db, "users"), where("username", "==", username));
@@ -40,12 +53,41 @@ export default function Profile() {
   };
 
   const handleEditProfile = () => {
-    router.push('/edit-profile');
-  }
+    router.push("/edit-profile");
+  };
 
-  const handleFollow = () => {
+  const handleFollow = async () => {
+    const followRef = doc(
+      db,
+      "follows",
+      `${user.userId}_${userInProfile.userId}`,
+    );
+    const followSnap = await getDoc(followRef);
 
-  }
+    if (followSnap.exists()) {
+      await deleteDoc(followRef);
+      await updateDoc(doc(db, "users", user.userId), {
+        followingCount: increment(-1),
+      });
+      await updateDoc(doc(db, "users", userInProfile.userId), {
+        followerCount: increment(-1),
+      });
+      setFollowed(false);
+    } else {
+      await setDoc(followRef, {
+        followerId: user.userId,
+        followingId: userInProfile.userId,
+        createdAt: serverTimestamp()
+      });
+      await updateDoc(doc(db, "users", user.userId), {
+        followingCount: increment(1),
+      });
+      await updateDoc(doc(db, "users", userInProfile.userId), {
+        followerCount: increment(1),
+      });
+      setFollowed(true);
+    }
+  };
 
   useEffect(() => {
     const loadUser = async () => {
@@ -60,6 +102,30 @@ export default function Profile() {
 
     loadUser();
   }, [user, username]);
+
+  useEffect(() => {
+    if (!user || !userInProfile) return;
+
+    if (username === user?.username) return;
+
+    const checkFollow = async () => {
+      const followRef = doc(
+        db,
+        "follows",
+        `${user.userId}_${userInProfile.userId}`,
+      );
+      const res = await getDoc(followRef);
+      if (res.exists()) {
+        setFollowed(true);
+      } else {
+        setFollowed(false);
+      }
+    };
+
+    checkFollow();
+  }, [user, userInProfile]);
+
+  if (loading) return <div>laoding...</div>;
 
   return (
     <>
@@ -87,9 +153,21 @@ export default function Profile() {
         </div>
         <div className="mb-auto mt-5">
           {username === user?.username ? (
-            <Button variant="outline" onClick={handleEditProfile}>Edit Profile</Button>
+            <Button variant="outline" onClick={handleEditProfile}>
+              Edit Profile
+            </Button>
+          ) : followed === true ? (
+            <Button
+              variant="outline"
+              onClick={handleFollow}
+              onMouseEnter={() => setHovered(true)}
+              onMouseLeave={() => setHovered(false)}
+              className="w-22.5 hover:border-red-500 hover:text-red-500"
+            >
+              {hovered ? "Unfollow" : "Following"}
+            </Button>
           ) : (
-            <Button>Follow</Button>
+            <Button onClick={handleFollow}>Follow</Button>
           )}
         </div>
       </div>
@@ -97,14 +175,19 @@ export default function Profile() {
         <TabsList variant="line" className="w-full">
           <TabsTrigger value="My Posts">My Posts</TabsTrigger>
           <TabsTrigger value="Replies">Replies</TabsTrigger>
-          <TabsTrigger value="Liked Posts">Liked Posts</TabsTrigger>
+          {username === user?.username && (
+            <TabsTrigger value="Liked Posts">Liked Posts</TabsTrigger>
+          )}
         </TabsList>
         <Separator />
         <TabsContent value="My Posts">
-          <PostView filter="my-posts" />
+          <PostView filter="my-posts" userInProfileId={userInProfile?.userId} />
         </TabsContent>
         <TabsContent value="Replies">
-          <PostView filter="my-replies" />
+          <PostView
+            filter="my-replies"
+            userInProfileId={userInProfile?.userId}
+          />
         </TabsContent>
         <TabsContent value="Liked Posts">
           {/* <Post filter="liked-posts" /> */}

@@ -110,7 +110,7 @@ export default function PostDetails() {
   return (
     <>
       <div className="flex gap-5 items-center">
-        <ArrowLeft onClick={() => router.push("/")} size={28} strokeWidth={1} />
+        <ArrowLeft onClick={() => router.back()} size={28} strokeWidth={1} />
         <h1 className="text-[20px]">Post</h1>
       </div>
       <Card className="w-full mt-5 mb-5" key={postId}>
