@@ -16,7 +16,14 @@ import {
 import React, { useEffect, useState } from "react";
 import { useAuthGuard } from "@/src/hooks/useAuthGuard";
 import { Spinner } from "@/src/components/ui/spinner";
-import { collection, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import {
+  collection,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  where,
+} from "firebase/firestore";
 import getConfig from "@/src/firebase/config";
 
 export default function Notifications() {
@@ -25,7 +32,7 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {
-    if (!user) return
+    if (!user) return;
     const q = query(
       collection(db, "notifications"),
       where("recipientId", "==", user.userId),
@@ -44,7 +51,7 @@ export default function Notifications() {
       setNotifications(newNotifications);
     });
 
-    return unsub
+    return unsub;
   }, [user]);
 
   if (loading)
@@ -56,28 +63,37 @@ export default function Notifications() {
 
   return (
     <>
-      {notifications.length === 0 && <div className="text-center">No notifications</div>}
-      {notifications.map((notification) => {
-        return (
-          <Card key={notification.id}>
-            <CardContent>
-              <div className="flex items-center gap-3">
-                <Avatar>
-                  <AvatarImage
-                    src="https://github.com/shadcn.png"
-                    alt="@shadcn"
-                  />
-                  <AvatarFallback>CN</AvatarFallback>
-                </Avatar>
-                <div>
-                  <CardTitle>{notification?.actorUsername} {notification?.type === "new-post" ? "just posted" : "replied to your post"}</CardTitle>
-                  <CardDescription>{notification?.content}</CardDescription>
+      <div className="flex flex-col gap-5">
+        {notifications.length === 0 && (
+          <div className="text-center">No notifications</div>
+        )}
+        {notifications.map((notification) => {
+          return (
+            <Card key={notification.notificationId}>
+              <CardContent>
+                <div className="flex items-center gap-3">
+                  <Avatar>
+                    <AvatarImage
+                      src="https://github.com/shadcn.png"
+                      alt="@shadcn"
+                    />
+                    <AvatarFallback>CN</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <CardTitle>
+                      {notification?.actorUsername}{" "}
+                      {notification?.type === "new-post"
+                        ? "just posted"
+                        : "replied to your post"}
+                    </CardTitle>
+                    <CardDescription>{notification?.content}</CardDescription>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </>
   );
 }

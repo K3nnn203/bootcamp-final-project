@@ -33,6 +33,7 @@ export default function PostView({ filter, userInProfileId }) {
 
   const createQuery = (lastDoc = null ) => {
     const constraints = [];
+    let collectionName = 'posts';
 
     switch (filter) {
       case "my-posts":
@@ -56,26 +57,32 @@ export default function PostView({ filter, userInProfileId }) {
         break;
 
       case "liked-posts":
-        // Different query
+        constraints.push(
+          where("userId", "==", userInProfileId),
+        );
+        collectionName = 'likes'
         break;
 
       case "bookmarks":
-        // q =
+        constraints.push(
+          where("userId", "==", userInProfileId),
+        );
+        collectionName = 'bookmarks'
         break;
 
       default:
         break;
-    }
+      }
 
     constraints.push(orderBy("createdAt", "desc"));
-
+      
     if (lastDoc) {
       constraints.push(startAfter(lastDoc));
     }
 
     constraints.push(limit(5));
 
-    return query(collection(db, "posts"), ...constraints);
+    return query(collection(db, collectionName), ...constraints);
   };
 
   const loadPost = async () => {
@@ -106,7 +113,6 @@ export default function PostView({ filter, userInProfileId }) {
     if (!lastDoc) return;
 
     setLoading(true);
-    const q = createQuery()
     const snapshot = await getDocs(createQuery(lastDoc));
 
     const newPosts = snapshot.docs.map((doc) => ({
@@ -166,9 +172,7 @@ export default function PostView({ filter, userInProfileId }) {
       <div className="flex flex-col pt-5 pb-5 gap-10">
         {allPost.map((post) => {
           return (
-            <div key={post.postId}>
-              <Post post={post} />
-            </div>
+            <Post postId={post.postId} key={post.postId} />
           );
         })}
         {hasMore && (

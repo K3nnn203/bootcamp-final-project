@@ -181,7 +181,10 @@ export default function Profile() {
         </TabsList>
         <Separator />
         <TabsContent value="My Posts">
-          <PostView filter="my-posts" userInProfileId={userInProfile?.userId} />
+          <PostView 
+            filter="my-posts" 
+            userInProfileId={userInProfile?.userId} 
+          />
         </TabsContent>
         <TabsContent value="Replies">
           <PostView
@@ -190,8 +193,10 @@ export default function Profile() {
           />
         </TabsContent>
         <TabsContent value="Liked Posts">
-          {/* <Post filter="liked-posts" /> */}
-          Work in progress
+          <PostView 
+            filter="liked-posts"
+            userInProfileId={userInProfile?.userId} 
+          />
         </TabsContent>
       </Tabs>
     </>

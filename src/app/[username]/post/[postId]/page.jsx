@@ -25,6 +25,7 @@ import {
   increment,
   onSnapshot,
   query,
+  setDoc,
   updateDoc,
   where,
 } from "firebase/firestore";
@@ -41,67 +42,117 @@ export default function PostDetails() {
   const { user } = useAuthGuard();
 
   const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
+  const [bookmarked, setBookmarked] = useState(0);
 
   const router = useRouter();
 
   const [post, setPost] = useState({});
 
-  const handleLikePost = async (e) => {
+  const getPostDetails = async () => {
+    const postRef = doc(db, "posts", postId);
+    const postSnap = await getDoc(postRef);
+    if (postSnap.exists()) {
+      setPost(postSnap.data());
+    }
+  };
+
+  const handleLikePost = async (e, postId) => {
     e.stopPropagation();
-    const q = query(
-      collection(db, "likes"),
-      where("postId", "==", postId),
-      where("userId", "==", user.userId),
-    );
+    const likeRef = doc(db, "likes", `${postId}_${user.userId}`);
 
-    const snapshot = await getDocs(q);
+    const likeSnap = await getDoc(likeRef);
 
-    if (snapshot.empty) {
-      // Like
-      await addDoc(collection(db, "likes"), {
-        postId: postId,
-        userId: user.userId,
+    if (likeSnap.exists()) {
+      await deleteDoc(likeRef);
+      await updateDoc(doc(db, "posts", postId), {
+        likeCount: increment(-1),
       });
-
+    } else {
       await updateDoc(doc(db, "posts", postId), {
         likeCount: increment(1),
       });
+      await setDoc(likeRef, {
+        //Like Information
+        postId: postId,
+        userId: user.userId,
+        createdAt: serverTimestamp(),
+        //Post Information
+        // userId: post.userId,
+        // username: post.username,
+        // profileName: post.profileName,
+        // userProfilePicture: post.userProfilePicture,
+        // content: post?.content,
+        // imageUrl: post?.imageUrl,
+        // replyToPostId: post?.replyToPostId,
+        // createdAt: post?.createdAt
+      });
+    }
+  };
+
+  const handleBookmarkPost = async (e, postId) => {
+    e.stopPropagation();
+    const bookmarkRef = doc(db, "bookmarks", `${postId}_${user.userId}`);
+
+    const bookmarkSnap = await getDoc(bookmarkRef);
+
+    if (bookmarkSnap.exists()) {
+      await deleteDoc(bookmarkRef);
     } else {
-      // Unlike
-      const likeDoc = snapshot.docs[0];
-
-      await deleteDoc(likeDoc.ref);
-
-      await updateDoc(doc(db, "posts", postId), {
-        likeCount: increment(-1),
+      await setDoc(bookmarkRef, {
+        postId,
+        userId: user.userId,
+        createdAt: serverTimestamp(),
       });
     }
   };
 
   useEffect(() => {
-    const getPost = async () => {
-      const docRef = doc(db, "posts", postId);
-      const docSnap = await getDoc(docRef);
-
-      if (docSnap.exists()) {
-        setPost({ ...docSnap.data() });
-      }
-    };
-    getPost();
+    getPostDetails();
   }, []);
 
   useEffect(() => {
     if (!user) return;
 
-    const q = query(
-      collection(db, "likes"),
-      where("userId", "==", user.userId),
-    );
+    const likeRef = doc(db, "likes", `${postId}_${user.userId}`);
 
-    const unsub = onSnapshot(q, (snapshot) => {
-      const liked = snapshot.docs.map((doc) => doc.data().postId);
+    const unsub = onSnapshot(likeRef, (doc) => {
+      const liked = doc.data();
+      if (liked) {
+        setLiked(true);
+      } else {
+        setLiked(false);
+      }
+    });
 
-      setLiked(liked.includes(postId));
+    return unsub;
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const postRef = doc(db, "posts", postId);
+
+    const unsub = onSnapshot(postRef, (doc) => {
+      const likeCountResult = doc.data().likeCount;
+      setLikeCount(likeCountResult);
+    });
+
+    return unsub;
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const bookmarkRef = doc(db, "bookmarks", `${postId}_${user.userId}`);
+
+    const unsub = onSnapshot(bookmarkRef, (doc) => {
+      const bookmarked = doc.data();
+      if (bookmarked) {
+        setBookmarked(true);
+      } else {
+        setBookmarked(false);
+      }
     });
 
     return unsub;
@@ -138,19 +189,21 @@ export default function PostDetails() {
               size={18}
               strokeWidth={1}
             />
-            <p>{post?.likeCount}</p>
+            <p>{likeCount}</p>
           </div>
           <div className="flex gap-2 items-center">
             <MessageCircle
-              className="hover:text-blue-500"
+              className="hover:text-green-500"
               size={18}
               strokeWidth={1}
             />
             <p>{post?.replyCount}</p>
           </div>
           <div className="flex gap-2 items-center">
-            <Bookmark
-              className="hover:text-green-500"
+             <Bookmark
+              onClick={(e) => handleBookmarkPost(e, postId)}
+              fill={bookmarked === true ? "currentColor" : "none"}
+              className={bookmarked === true ? "text-blue-500" : "hover:text-blue-500"}
               size={18}
               strokeWidth={1}
             />
@@ -160,7 +213,7 @@ export default function PostDetails() {
       <p>Posted on {post?.createdAt?.toDate().toString().slice(4, 15)}</p>
       <Separator className="mt-5 mb-5" />
       <UploadPost />
-      <PostView filter='all-replies' />
+      <PostView filter="all-replies" />
     </>
   );
 }
