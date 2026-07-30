@@ -14,27 +14,63 @@ import {
 } from "@/src/components/ui/field";
 import {
   Avatar,
+  AvatarBadge,
   AvatarFallback,
   AvatarImage,
 } from "@/src/components/ui/avatar";
 import { Input } from "@/src/components/ui/input";
-import React, { useEffect, useState } from "react";
-import { Textarea } from "@/src/components/ui/textarea";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import React, { useEffect, useRef, useState } from "react";
+import { useAuth } from "@/src/hooks/useAuth";
 import { Button } from "@/src/components/ui/button";
 import { useRouter } from "next/navigation";
 import { doc, updateDoc } from "firebase/firestore";
 import getConfig from "@/src/firebase/config";
 import { toast } from "sonner";
 import { Spinner } from "@/src/components/ui/spinner";
+import { InputGroup, InputGroupAddon, InputGroupText, InputGroupTextarea } from "@/src/components/ui/input-group";
+import { SquarePen } from "lucide-react";
 
 export default function EditProfile() {
 
   const { db } = getConfig();
-  const  { user, loading } = useAuthGuard();
+  const  { user, loading } = useAuth();
   const router = useRouter();
 
   const [loadingUpdateProfile, setLoadingUpdateProfile] = useState(false)
+  const [bioLength, setBioLength] = useState(0)
+  const [image, setImage] = useState('');
+
+  const fileInputRef = useRef(null)
+
+  const handleChangeImage = async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    
+    const imageUrl = await uploadImage(file);
+    setImage(imageUrl)
+  }
+
+  const uploadImage = async (file) => {
+    const formData = new FormData();
+
+    formData.append("file", file);
+    formData.append("upload_preset", "bootcamp_upload");
+
+    try {
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/m7zce3e7/auto/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+      const data = await res.json();
+      return data.secure_url;
+    } catch (err) {
+      toast.error(err.message)
+    }
+
+  }
 
   const handleGoBack = () => {
     router.back();
@@ -44,7 +80,8 @@ export default function EditProfile() {
     const userRef = doc(db, 'users', user.userId)
     await updateDoc(userRef, {
       profileName: profileName,
-      bio: bio
+      bio: bio,
+      profilePic: image
     })
   }
 
@@ -64,7 +101,11 @@ export default function EditProfile() {
     }
   }
 
-  if(loading) return <div>loading...</div>
+  useEffect(() => {
+    setBioLength(user?.bio.length)
+  }, [user])
+
+  if(loading) return <div className="flex justify-center"><Spinner /></div>
 
   return (
     <div>
@@ -75,8 +116,18 @@ export default function EditProfile() {
           <FieldGroup>
             <div className="flex flex-col gap-5 items-center">
               <Avatar className="w-35 h-35">
-                <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-                <AvatarFallback>CN</AvatarFallback>
+                <AvatarImage src={image} alt="profile-picture" />
+                <AvatarFallback>{user?.username[0]}</AvatarFallback>
+                <AvatarBadge style={{width: 30, height: 30}} onClick={() => fileInputRef.current?.click()}>
+                  <SquarePen style={{width: 20, height: 20}} />
+                </AvatarBadge>
+                <Input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={handleChangeImage}
+                />
               </Avatar>
               <p className="text-sm text-muted-foreground">
                   @{user?.username}
@@ -91,7 +142,19 @@ export default function EditProfile() {
             </Field>
             <Field>
               <FieldLabel htmlFor="bio">Bio</FieldLabel>
-              <Textarea id="bio" name="bio" placeholder="I love burgers..." defaultValue={user?.bio} />
+              <InputGroup>
+                <InputGroupTextarea 
+                  id="bio" 
+                  name="bio" 
+                  placeholder="I love burgers..." 
+                  defaultValue={user?.bio} 
+                  onChange={(e) => setBioLength(e.target.value.length)}
+                  maxLength={160} 
+                />
+                <InputGroupAddon align="block-end">
+                  <InputGroupText>{bioLength}/160</InputGroupText>
+                </InputGroupAddon>
+              </InputGroup>
               <FieldDescription>Share something about yourself</FieldDescription>
             </Field>
             <Field orientation="horizontal">

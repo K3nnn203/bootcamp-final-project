@@ -14,7 +14,7 @@ import {
   AvatarImage,
 } from "@/src/components/ui/avatar";
 import React, { useEffect, useState } from "react";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import { useAuth } from "@/src/hooks/useAuth";
 import { Spinner } from "@/src/components/ui/spinner";
 import {
   collection,
@@ -28,7 +28,7 @@ import getConfig from "@/src/firebase/config";
 
 export default function Notifications() {
   const { db } = getConfig();
-  const { user, loading } = useAuthGuard();
+  const { user, loading } = useAuth();
   const [notifications, setNotifications] = useState([]);
 
   useEffect(() => {

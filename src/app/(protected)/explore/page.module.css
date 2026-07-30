@@ -1,0 +1,5 @@
+.popup {
+  width: var(--popup-width, 558px);
+  height: var(--popup-height, auto);
+  padding: 10px;
+}

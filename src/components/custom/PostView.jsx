@@ -14,14 +14,13 @@ import {
 } from "firebase/firestore";
 import getConfig from "@/src/firebase/config";
 import { useParams } from "next/navigation";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import { useAuth } from "@/src/hooks/useAuth";
 import Post from "@/src/components/custom/Post";
 import { Spinner } from "@/src/components/ui/spinner";
 
-export default function PostView({ filter, userInProfileId }) {
+export default function PostView({ filter, userInProfileId, refreshKey }) {
   const { postId } = useParams();
   const { db } = getConfig();
-  const { user } = useAuthGuard();
 
   const [allPost, setAllPost] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
@@ -31,51 +30,53 @@ export default function PostView({ filter, userInProfileId }) {
 
   const loaderRef = useRef(null);
 
-  const createQuery = (lastDoc = null ) => {
+  const createQuery = (lastDoc = null) => {
     const constraints = [];
-    let collectionName = 'posts';
+    let collectionName = "posts";
 
     switch (filter) {
       case "my-posts":
+        if (userInProfileId) {
           constraints.push(
             where("userId", "==", userInProfileId),
             where("replyToPostId", "==", ""),
           );
+        }
         break;
 
       case "all-replies":
-        constraints.push(
-          where("replyToPostId", "==", postId),
-        );
+        constraints.push(where("replyToPostId", "==", postId));
         break;
 
       case "my-replies":
-        constraints.push(
-          where("userId", "==", userInProfileId),
-          where("replyToPostId", "!=", ""),
-        );
+        if (userInProfileId) {
+          constraints.push(
+            where("userId", "==", userInProfileId),
+            where("replyToPostId", "!=", ""),
+          );
+        }
         break;
 
       case "liked-posts":
-        constraints.push(
-          where("userId", "==", userInProfileId),
-        );
-        collectionName = 'likes'
+        if (userInProfileId) {
+          constraints.push(where("userId", "==", userInProfileId));
+          collectionName = "likes";
+        }
         break;
 
       case "bookmarks":
-        constraints.push(
-          where("userId", "==", userInProfileId),
-        );
-        collectionName = 'bookmarks'
+        if (userInProfileId) {
+          constraints.push(where("userId", "==", userInProfileId));
+          collectionName = "bookmarks";
+        }
         break;
 
       default:
         break;
-      }
+    }
 
     constraints.push(orderBy("createdAt", "desc"));
-      
+
     if (lastDoc) {
       constraints.push(startAfter(lastDoc));
     }
@@ -86,8 +87,6 @@ export default function PostView({ filter, userInProfileId }) {
   };
 
   const loadPost = async () => {
-    if (!user) return;
-
     const snapshot = await getDocs(createQuery());
     const newPosts = snapshot.docs.map((doc) => ({
       postId: doc.id,
@@ -136,10 +135,8 @@ export default function PostView({ filter, userInProfileId }) {
   };
 
   useEffect(() => {
-    if (!user) return;
-
     loadPost();
-  }, [db, postId, user]);
+  }, [db, postId, userInProfileId]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -163,17 +160,22 @@ export default function PostView({ filter, userInProfileId }) {
     return () => observer.disconnect();
   }, [lastDoc, loading, hasMore]);
 
-  console.log(lastDoc)
+  useEffect(() => {
+    loadPost();
+  }, [refreshKey]);
 
-  if(initialLoading) return <div className="flex justify-center"><Spinner /></div>
+  if (initialLoading)
+    return (
+      <div className="flex justify-center">
+        <Spinner />
+      </div>
+    );
 
   return (
     <>
       <div className="flex flex-col pt-5 pb-5 gap-10">
         {allPost.map((post) => {
-          return (
-            <Post postId={post.postId} key={post.postId} />
-          );
+          return <Post postId={post.postId} key={post.postId} />;
         })}
         {hasMore && (
           <div ref={loaderRef} className="ml-auto mr-auto">

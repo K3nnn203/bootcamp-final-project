@@ -2,11 +2,11 @@
 
 import PostView from '@/src/components/custom/PostView'
 import { Spinner } from '@/src/components/ui/spinner';
-import { useAuthGuard } from '@/src/hooks/useAuthGuard'
+import { useAuth } from '@/src/hooks/useAuth'
 import React from 'react'
 
 export default function Bookmark() {
-  const { user, loading } = useAuthGuard();
+  const { user, loading } = useAuth();
 
   if (loading)
     return (

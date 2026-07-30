@@ -15,7 +15,7 @@ export default function InputImage({ onSelect }) {
 
   return (
     <>
-      <button onClick={() => fileInputRef.current?.click()} className="w-7.5 h-7.5 rounded-[50%] hover:bg-[var(--color-muted-foreground)] transition duration-100 ease-in">
+      <button onClick={() => fileInputRef.current?.click()} className="w-7.5 h-7.5 rounded-[50%] hover:bg-muted transition duration-100 ease-in">
         <Image className="m-auto" size={20} strokeWidth={2} />
       </button>
 

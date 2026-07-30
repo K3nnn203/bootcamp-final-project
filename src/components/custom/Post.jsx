@@ -13,7 +13,7 @@ import {
   AvatarFallback,
   AvatarImage,
 } from "@/src/components/ui/avatar";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import { useAuth } from "@/src/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import {
@@ -29,13 +29,14 @@ import {
 import { Heart, MessageCircle, Bookmark } from "lucide-react";
 import getConfig from "@/src/firebase/config";
 import { Skeleton } from "@/src/components/ui/skeleton";
+import Image from "next/image";
 
 export default function Post(props) {
   const { postId } = props;
 
   const router = useRouter();
   const { db } = getConfig();
-  const { user } = useAuthGuard();
+  const { user } = useAuth();
 
   const [loading, setLoading] = useState(true);
 
@@ -202,8 +203,8 @@ export default function Post(props) {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Avatar>
-            <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-            <AvatarFallback>CN</AvatarFallback>
+            <AvatarImage src={postDetail?.userProfilePicture} alt="@shadcn" />
+            <AvatarFallback>{postDetail?.username[0]}</AvatarFallback>
           </Avatar>
           <div>
             <CardTitle>{postDetail?.profileName}</CardTitle>
@@ -216,6 +217,16 @@ export default function Post(props) {
       </CardHeader>
       <CardContent>
         <p>{postDetail?.content}</p>
+        {postDetail?.imageUrl && (
+          <Image
+            src={postDetail?.imageUrl}
+            alt="Preview"
+            width={800}
+            height={800}
+            className="mt-5 rounded-md h-auto w-full"
+            loading="eager"
+          />
+        )}
       </CardContent>
       <CardFooter className="flex gap-10">
         <div className="flex gap-2 items-center">

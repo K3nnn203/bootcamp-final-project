@@ -21,14 +21,14 @@ import { X } from "lucide-react";
 import { Spinner } from "../ui/spinner";
 import getConfig from "@/src/firebase/config";
 import { addDoc, collection, doc, getDoc, getDocs, increment, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import { useAuth } from "@/src/hooks/useAuth";
 import { toast } from "sonner";
 import { useParams } from "next/navigation";
 
-export default function UploadPost() {
+export default function UploadPost({ onPostCreated }) {
   const { postId } = useParams();
   const { db } = getConfig();
-  const { user } = useAuthGuard();
+  const { user } = useAuth();
 
   const [content, setContent] = useState("");
   const [imageFile, setImageFile] = useState(null);
@@ -83,24 +83,32 @@ export default function UploadPost() {
     }
   }
 
+  const uploadImage = async (file) => {
+    if (!file)
+      return ''
+
+    const formData = new FormData();
+
+    formData.append("file", file);
+    formData.append("upload_preset", "bootcamp_upload");
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/m7zce3e7/auto/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await res.json();
+
+    return data.secure_url;
+  }
+
   const handleUploadPost = async () => {
     setLoading(true);
     try {
-      let imageUrl = null;
-
-      if (imageFile) {
-        // Give each image a unique filename
-        const imageRef = ref(
-          storage,
-          `posts/${user.userId}/${Date.now()}-${imageFile.name}`,
-        );
-
-        // Upload image
-        await uploadBytes(imageRef, imageFile);
-
-        // Get the public URL
-        imageUrl = await getDownloadURL(imageRef);
-      }
+      const imageUrl = await uploadImage(imageFile);
 
       const postCollections = collection(db, "posts");
       const newPost = await addDoc(postCollections, {
@@ -133,6 +141,7 @@ export default function UploadPost() {
       toast.error(error.message);
     } finally {
       setLoading(false);
+      onPostCreated();
     }
   };
 
@@ -157,8 +166,8 @@ export default function UploadPost() {
     <Field>
       <div className="flex items-center gap-3">
         <Avatar>
-          <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-          <AvatarFallback>CN</AvatarFallback>
+          <AvatarImage src={user?.profilePic} alt="@shadcn" />
+          <AvatarFallback>{user?.username[0]}</AvatarFallback>
         </Avatar>
         <div>
           <CardTitle>{user?.profileName}</CardTitle>
@@ -192,6 +201,7 @@ export default function UploadPost() {
               width={800}
               height={800}
               className="mt-3 rounded-md h-auto w-full p-5"
+              loading="eager"
             />
           </div>
         )}

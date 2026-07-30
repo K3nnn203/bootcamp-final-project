@@ -9,6 +9,7 @@ import {
 } from "@/src/components/ui/avatar";
 import { Button } from "@/src/components/ui/button";
 import { Separator } from "@/src/components/ui/separator";
+import { Spinner } from "@/src/components/ui/spinner";
 import {
   Tabs,
   TabsContent,
@@ -16,7 +17,7 @@ import {
   TabsTrigger,
 } from "@/src/components/ui/tabs";
 import getConfig from "@/src/firebase/config";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import { useAuth } from "@/src/hooks/useAuth";
 import {
   collection,
   deleteDoc,
@@ -25,6 +26,7 @@ import {
   getDocs,
   increment,
   query,
+  serverTimestamp,
   setDoc,
   updateDoc,
   where,
@@ -35,7 +37,7 @@ import React, { useEffect, useState } from "react";
 export default function Profile() {
   const router = useRouter();
   const { username } = useParams();
-  const { user, loading } = useAuthGuard();
+  const { user } = useAuth();
   const { db } = getConfig();
 
   const [userInProfile, setUserInProfile] = useState();
@@ -125,17 +127,15 @@ export default function Profile() {
     checkFollow();
   }, [user, userInProfile]);
 
-  if (loading) return <div>laoding...</div>;
-
   return (
     <>
-      <div className="flex items-center gap-10 mb-5">
-        <Avatar className="w-35 h-35">
-          <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-          <AvatarFallback>CN</AvatarFallback>
-        </Avatar>
-        <div className="">
-          <div className="mt-5 mb-2">
+      <div className="flex flex-col gap-5 mb-5">
+        <div className="flex items-center gap-10">
+          <Avatar className="w-35 h-35">
+            <AvatarImage src={userInProfile?.profilePic} alt="profile-picture" />
+            <AvatarFallback>{userInProfile?.username[0]}</AvatarFallback>
+          </Avatar>
+          <div className="mt-5 mb-2 flex-1">
             <h1 className="font-heading text-2xl font-bold">
               {userInProfile?.profileName}
             </h1>
@@ -143,7 +143,29 @@ export default function Profile() {
               @{userInProfile?.username}
             </p>
           </div>
-          <p className="mt-1 mb-1">
+          <div className="flex items-center mr-5">
+            {username === user?.username ? (
+              <Button variant="outline" onClick={handleEditProfile}>
+                Edit Profile
+              </Button>
+            ) : followed === true ? (
+              <Button
+                variant="outline"
+                onClick={handleFollow}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
+                className="w-22.5 hover:border-red-500 hover:text-red-500"
+              >
+                {hovered ? "Unfollow" : "Following"}
+              </Button>
+            ) : (
+              <Button onClick={handleFollow}>Follow</Button>
+            )}
+          </div>
+        </div>
+        <div className="">
+          <p className="mb-5">{userInProfile?.bio || 'No bio'}</p>
+          <p className="my-1">
             Joined {userInProfile?.createdAt.toDate().toString().slice(4, 15)}
           </p>
           <div className="flex gap-10 mt-2 mb-1">
@@ -151,25 +173,7 @@ export default function Profile() {
             <p>{userInProfile?.followerCount} Followers</p>
           </div>
         </div>
-        <div className="mb-auto mt-5">
-          {username === user?.username ? (
-            <Button variant="outline" onClick={handleEditProfile}>
-              Edit Profile
-            </Button>
-          ) : followed === true ? (
-            <Button
-              variant="outline"
-              onClick={handleFollow}
-              onMouseEnter={() => setHovered(true)}
-              onMouseLeave={() => setHovered(false)}
-              className="w-22.5 hover:border-red-500 hover:text-red-500"
-            >
-              {hovered ? "Unfollow" : "Following"}
-            </Button>
-          ) : (
-            <Button onClick={handleFollow}>Follow</Button>
-          )}
-        </div>
+        
       </div>
       <Tabs defaultValue="My Posts">
         <TabsList variant="line" className="w-full">

@@ -16,34 +16,35 @@ import {
 import { ArrowLeft, Bookmark, Heart, MessageCircle } from "lucide-react";
 import getConfig from "@/src/firebase/config";
 import {
-  addDoc,
-  collection,
   deleteDoc,
   doc,
   getDoc,
-  getDocs,
   increment,
   onSnapshot,
-  query,
+  serverTimestamp,
   setDoc,
   updateDoc,
-  where,
 } from "firebase/firestore";
 import { useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 import { Separator } from "@/src/components/ui/separator";
 import UploadPost from "@/src/components/custom/UploadPost";
-import { useAuthGuard } from "@/src/hooks/useAuthGuard";
+import { useAuth } from "@/src/hooks/useAuth";
 import PostView from "@/src/components/custom/PostView";
+import { Skeleton } from "@/src/components/ui/skeleton";
+import Image from "next/image";
 
 export default function PostDetails() {
   const { postId } = useParams();
   const { db } = getConfig();
-  const { user } = useAuthGuard();
+  const { user } = useAuth();
 
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [bookmarked, setBookmarked] = useState(0);
+  const [loadingPost, setLoadingPost] = useState(true);
+
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const router = useRouter();
 
@@ -55,9 +56,10 @@ export default function PostDetails() {
     if (postSnap.exists()) {
       setPost(postSnap.data());
     }
+    setLoadingPost(false)
   };
 
-  const handleLikePost = async (e, postId) => {
+  const handleLikePost = async (e) => {
     e.stopPropagation();
     const likeRef = doc(db, "likes", `${postId}_${user.userId}`);
 
@@ -90,7 +92,7 @@ export default function PostDetails() {
     }
   };
 
-  const handleBookmarkPost = async (e, postId) => {
+  const handleBookmarkPost = async (e) => {
     e.stopPropagation();
     const bookmarkRef = doc(db, "bookmarks", `${postId}_${user.userId}`);
 
@@ -158,6 +160,21 @@ export default function PostDetails() {
     return unsub;
   }, [user]);
 
+  if (loadingPost)
+    return (
+      <Card>
+        <CardContent>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-12 w-12 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-62.5" />
+              <Skeleton className="h-4 w-50" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+
   return (
     <>
       <div className="flex gap-5 items-center">
@@ -168,8 +185,8 @@ export default function PostDetails() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-              <AvatarFallback>CN</AvatarFallback>
+              <AvatarImage src={post?.userProfilePicture} alt="profile-picture" />
+              <AvatarFallback>{post?.username[0]}</AvatarFallback>
             </Avatar>
             <div>
               <CardTitle>{post?.profileName}</CardTitle>
@@ -179,6 +196,16 @@ export default function PostDetails() {
         </CardHeader>
         <CardContent>
           <p>{post?.content}</p>
+          {post?.imageUrl && (
+            <Image
+              src={post?.imageUrl}
+              alt="Preview"
+              width={800}
+              height={800}
+              className="mt-5 rounded-md h-auto w-full"
+              loading="eager"
+            />
+          )}
         </CardContent>
         <CardFooter className="flex gap-10">
           <div className="flex gap-2 items-center">
@@ -212,8 +239,8 @@ export default function PostDetails() {
       </Card>
       <p>Posted on {post?.createdAt?.toDate().toString().slice(4, 15)}</p>
       <Separator className="mt-5 mb-5" />
-      <UploadPost />
-      <PostView filter="all-replies" />
+      <UploadPost onPostCreated={() => setRefreshKey(prev => prev + 1)} />
+      <PostView filter="all-replies" refreshKey={refreshKey} />
     </>
   );
 }

@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "../context/ThemeContext";
 import { Toaster } from "sonner";
 import Navigation from "../components/custom/Navigation";
+import { AuthProvider } from "../hooks/useAuth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,11 +28,10 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col">
         <ThemeProvider>
-          <Navigation />
-          <div className="w-150 min-h-[calc(100vh-60px)] mr-auto ml-auto border-r border-l p-5">
+          <AuthProvider>
             {children}
-          </div>
-          <Toaster />
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
