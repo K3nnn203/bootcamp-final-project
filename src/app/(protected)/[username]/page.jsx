@@ -31,7 +31,7 @@ import {
   updateDoc,
   where,
 } from "firebase/firestore";
-import { useParams, useRouter } from "next/navigation";
+import { redirect, useParams, useRouter } from "next/navigation";
 import React, { useEffect, useState } from "react";
 
 export default function Profile() {
@@ -43,6 +43,7 @@ export default function Profile() {
   const [userInProfile, setUserInProfile] = useState();
   const [followed, setFollowed] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [loadingGetUser, setLoadingGetUser] = useState(true);
 
   const getUser = async () => {
     const q = query(collection(db, "users"), where("username", "==", username));
@@ -98,8 +99,13 @@ export default function Profile() {
         setUserInProfile(user);
       } else {
         const getUserResult = await getUser();
+        if(!getUserResult){
+          router.replace('/not-found')
+          return
+        } 
         setUserInProfile(getUserResult);
       }
+      setLoadingGetUser(false)
     };
 
     loadUser();
@@ -126,6 +132,13 @@ export default function Profile() {
 
     checkFollow();
   }, [user, userInProfile]);
+
+  if(loadingGetUser) 
+    return (
+      <div className="flex justify-center">
+        <Spinner />
+      </div>
+    );
 
   return (
     <>

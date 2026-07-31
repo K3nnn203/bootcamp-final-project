@@ -60,13 +60,13 @@ export default function Login() {
       setLoading(true)
       signInWithEmailAndPassword(auth, form.email, form.password)
         .then(async (userCredential) => {
-          const user = userCredential.user;
-          const userData = await getDoc(doc(db, "users", user.uid));
+          // const user = userCredential.user;
+          // const userData = await getDoc(doc(db, "users", user.uid));
           toast.success("Login successful.", {position: 'bottom-right'})
           router.replace("/");
         })
         .catch((error) => {
-          window.alert(error.message);
+          toast.error(error.message);
         })
         .finally(() => {
           setLoading(false);
@@ -132,6 +132,7 @@ export default function Login() {
           </div>
         </CardFooter>
       </Card>
+      <a href="/read-me" className="absolute bottom-5 right-5 text-sm">For first time visitor/reviewer, click here to learn more about this project</a>
     </div>
   );
 }
