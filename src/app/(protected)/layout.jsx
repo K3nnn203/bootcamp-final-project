@@ -1,13 +1,15 @@
 "use client";
 
-import Navigation from "@/src/components/custom/Navigation";
+import DesktopNavigation from "@/src/components/custom/DesktopNavigation";
+import MobileNavigation from "@/src/components/custom/MobileNavigation";
 import ProtectedRoute from "@/src/components/custom/ProtectedRoute";
 
 export default function ProtectedLayout({ children }) {
   return (
     <ProtectedRoute>
-      <Navigation />
-      <div className="w-150 min-h-[calc(100vh-60px)] mr-auto ml-auto border-r border-l p-5">
+      <DesktopNavigation className="hidden lg:grid" />
+      <MobileNavigation className="lg:hidden "/>
+      <div className="max-w-150 min-h-[calc(100vh-60px)] mr-auto ml-auto border-r border-l p-5">
         {children}
       </div>
     </ProtectedRoute>

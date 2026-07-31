@@ -131,7 +131,7 @@ export default function Profile() {
     <>
       <div className="flex flex-col gap-5 mb-5">
         <div className="flex items-center gap-10">
-          <Avatar className="w-35 h-35">
+          <Avatar className="w-25 h-25 md:w-35 md:h-35">
             <AvatarImage src={userInProfile?.profilePic} alt="profile-picture" />
             <AvatarFallback>{userInProfile?.username[0]}</AvatarFallback>
           </Avatar>

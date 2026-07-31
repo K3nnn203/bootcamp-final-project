@@ -135,7 +135,7 @@ export default function EditProfile() {
             </div>
             <Field>
               <FieldLabel htmlFor="profile-name">Name</FieldLabel>
-              <Input id="profile-name" name="profile-name" defaultValue={user?.profileName} />
+              <Input id="profile-name" name="profile-name" defaultValue={user?.profileName} maxLength={30} />
               <FieldDescription>
                 This is your display name
               </FieldDescription>

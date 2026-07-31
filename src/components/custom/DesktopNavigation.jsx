@@ -17,7 +17,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import { toast } from "sonner";
 import { useTheme } from "@/src/context/ThemeContext";
 
-export default function Navigation() {
+export default function DesktopNavigation({ className }) {
   const { theme, toggle } = useTheme();
   const { auth } = getConfig();
   const { user } = useAuth();
@@ -35,7 +35,7 @@ export default function Navigation() {
   };
 
   return (
-    <div className="grid grid-cols-[1fr_2fr_1fr]">
+    <div className={`grid grid-cols-[1fr_2fr_1fr] ${className}`}>
       <NavigationMenu className="p-1 ml-auto mr-auto col-start-2 self-center">
         <NavigationMenuList>
           <NavigationMenuItem>

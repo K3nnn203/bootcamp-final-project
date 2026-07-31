@@ -12,7 +12,7 @@ export default function Home() {
       <UploadPost
         onPostCreated={() => setRefreshKey(prev => prev + 1)}
       />
-      <PostView refreshKey={refreshKey} />
+      <PostView filter='home-feed' refreshKey={refreshKey} />
     </>
   );
 }

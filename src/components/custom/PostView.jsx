@@ -21,6 +21,7 @@ import { Spinner } from "@/src/components/ui/spinner";
 export default function PostView({ filter, userInProfileId, refreshKey }) {
   const { postId } = useParams();
   const { db } = getConfig();
+  const { user } = useAuth();
 
   const [allPost, setAllPost] = useState([]);
   const [lastDoc, setLastDoc] = useState(null);
@@ -29,6 +30,19 @@ export default function PostView({ filter, userInProfileId, refreshKey }) {
   const [loading, setLoading] = useState(false);
 
   const loaderRef = useRef(null);
+
+  const getFollowerIds = async () => {
+    const q = query(
+      collection(db, "follows"),
+      where("followerId", "==", user.userId),
+    );
+    const followingSnap = await getDocs(q);
+    const followingIds = followingSnap.docs.map(
+      (doc) => doc.data().followingId,
+    );
+    followingIds.push(user.userId);
+    return followingIds;
+  };
 
   const createQuery = (lastDoc = null) => {
     const constraints = [];
@@ -81,19 +95,48 @@ export default function PostView({ filter, userInProfileId, refreshKey }) {
       constraints.push(startAfter(lastDoc));
     }
 
-    constraints.push(limit(5));
+    constraints.push(limit(10));
 
     return query(collection(db, collectionName), ...constraints);
   };
 
-  const loadPost = async () => {
-    const snapshot = await getDocs(createQuery());
-    const newPosts = snapshot.docs.map((doc) => ({
-      postId: doc.id,
-      ...doc.data(),
-    }));
+  const getFollowingFeed = async (lastDoc = null) => {
+    const followingIds = await getFollowerIds();
+    let constraints = [];
+    constraints.push(
+      where("userId", "in", followingIds),
+      where("replyToPostId", "==", ""),
+      orderBy("createdAt", "desc"),
+    )
+    if(lastDoc)
+      constraints.push(startAfter(lastDoc))
 
-    setAllPost(newPosts);
+    constraints.push(limit(10))
+    const q = query(
+      collection(db, "posts"), ...constraints
+    );
+    const snapshot = await getDocs(q);
+    
+    return snapshot;
+  };
+
+  const loadPost = async () => {
+    let newPosts;
+    let snapshot;
+    if (filter === "home-feed") {
+      snapshot = await getFollowingFeed();
+      newPosts = snapshot.docs.map((doc) => ({
+        postId: doc.id,
+        ...doc.data(),
+      }));
+
+    } else {
+      snapshot = await getDocs(createQuery());
+      newPosts = snapshot.docs.map((doc) => ({
+        postId: doc.id,
+        ...doc.data(),
+      }));
+    }
     setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
 
     if (snapshot.empty) {
@@ -102,8 +145,9 @@ export default function PostView({ filter, userInProfileId, refreshKey }) {
       setInitialLoading(false);
       return;
     }
-    if (snapshot.docs.length < 5) setHasMore(false);
+    if (snapshot.docs.length < 10) setHasMore(false);
 
+    setAllPost(newPosts);
     setInitialLoading(false);
   };
 
@@ -112,12 +156,22 @@ export default function PostView({ filter, userInProfileId, refreshKey }) {
     if (!lastDoc) return;
 
     setLoading(true);
-    const snapshot = await getDocs(createQuery(lastDoc));
+    let newPosts;
+    let snapshot;
+    if (filter === "home-feed") {
+      snapshot = await getFollowingFeed(lastDoc);
+      newPosts = snapshot.docs.map((doc) => ({
+        postId: doc.id,
+        ...doc.data(),
+      }));
 
-    const newPosts = snapshot.docs.map((doc) => ({
-      postId: doc.id,
-      ...doc.data(),
-    }));
+    } else {
+      snapshot = await getDocs(createQuery(lastDoc));
+      newPosts = snapshot.docs.map((doc) => ({
+        postId: doc.id,
+        ...doc.data(),
+      }));
+    }
 
     setAllPost((prev) => [...prev, ...newPosts]);
 
@@ -129,7 +183,7 @@ export default function PostView({ filter, userInProfileId, refreshKey }) {
 
     setLastDoc(snapshot.docs[snapshot.docs.length - 1]);
 
-    if (snapshot.docs.length < 5) setHasMore(false);
+    if (snapshot.docs.length < 10) setHasMore(false);
 
     setLoading(false);
   };
